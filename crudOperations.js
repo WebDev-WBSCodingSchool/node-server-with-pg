@@ -1,3 +1,5 @@
+import pg from 'pg';
+const { Client } = pg;
 // Import utility functions
 import { getResourceId, processBodyFromRequest, returnErrorWithMessage } from './utils.js';
 
@@ -15,10 +17,21 @@ export const createPost = async (req, res) => {
   }
 };
 
-export const getPosts = (req, res) => {
-  res.statusCode = 200;
-  res.setHeader('Content-Type', 'application/json');
-  res.end(JSON.stringify({ message: 'Posts fetched' }));
+export const getPosts = async (req, res) => {
+  try {
+    const client = new Client({
+      connectionString: process.env.PG_URI
+    });
+    await client.connect();
+    const results = await client.query('SELECT * FROM posts;');
+    await client.end();
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify(results.rows));
+  } catch (error) {
+    console.error('Error fetching posts: ', error);
+    returnErrorWithMessage(res);
+  }
 };
 
 export const getPostById = (req, res) => {

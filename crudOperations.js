@@ -62,12 +62,28 @@ export const getPostById = async (req, res) => {
   }
 };
 
-export const updatePost = (req, res) => {
-  const id = getResourceId(req.url);
-  console.log('Here we have access to the ID: ', id);
-  res.statusCode = 200;
-  res.setHeader('Content-Type', 'application/json');
-  res.end(JSON.stringify({ message: 'Post updated' }));
+export const updatePost = async (req, res) => {
+  try {
+    const id = getResourceId(req.url);
+    const body = await processBodyFromRequest(req);
+    if (!body) return returnErrorWithMessage(res, 400, 'Body is required');
+    const parsedBody = JSON.parse(body);
+    const client = new Client({
+      connectionString: process.env.PG_URI
+    });
+    await client.connect();
+    const results = await client.query(
+      'UPDATE posts SET title = $1, author = $2, content = $3 WHERE id = $4 RETURNING *;',
+      [parsedBody.title, parsedBody.author, parsedBody.content, id]
+    );
+    await client.end();
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify(results.rows[0]));
+  } catch (error) {
+    console.error('Error fetching post: ', error);
+    returnErrorWithMessage(res);
+  }
 };
 
 export const deletePost = (req, res) => {

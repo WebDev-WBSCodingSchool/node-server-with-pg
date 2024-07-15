@@ -8,11 +8,20 @@ export const createPost = async (req, res) => {
     const body = await processBodyFromRequest(req);
     if (!body) return returnErrorWithMessage(res, 400, 'Body is required');
     const parsedBody = JSON.parse(body);
-    console.log('Here we have access to the body: ', parsedBody);
+    const client = new Client({
+      connectionString: process.env.PG_URI
+    });
+    await client.connect();
+    const results = await client.query(
+      'INSERT INTO posts (title, author, content) VALUES ($1, $2, $3) RETURNING *;',
+      [parsedBody.title, parsedBody.author, parsedBody.content]
+    );
+    await client.end();
     res.statusCode = 201;
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ message: 'Post created' }));
+    res.end(JSON.stringify(results.rows[0]));
   } catch (error) {
+    console.error('Error creating post: ', error);
     returnErrorWithMessage(res);
   }
 };

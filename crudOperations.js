@@ -43,12 +43,23 @@ export const getPosts = async (req, res) => {
   }
 };
 
-export const getPostById = (req, res) => {
-  const id = getResourceId(req.url);
-  console.log('Here we have access to the ID: ', id);
-  res.statusCode = 200;
-  res.setHeader('Content-Type', 'application/json');
-  res.end(JSON.stringify({ message: 'Post fetched' }));
+export const getPostById = async (req, res) => {
+  try {
+    const id = getResourceId(req.url);
+    const client = new Client({
+      connectionString: process.env.PG_URI
+    });
+    await client.connect();
+    const results = await client.query('SELECT * FROM posts WHERE id = $1;', [id]);
+    await client.end();
+    if (!results.rowCount) return returnErrorWithMessage(res, 404, 'Post not found');
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify(results.rows[0]));
+  } catch (error) {
+    console.error('Error fetching post: ', error);
+    returnErrorWithMessage(res);
+  }
 };
 
 export const updatePost = (req, res) => {
